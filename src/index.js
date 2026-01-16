@@ -24,46 +24,31 @@ async function start() {
 
         // Handle callback queries (buttons)
         botService.bot.on('callback_query', async (query) => {
-            const chatId = query.message.chat.id;
-            const data = query.data;
+            try {
+                const chatId = query.message.chat.id;
+                const data = query.data;
 
-            // Acknowledge the button press
-            await botService.bot.answerCallbackQuery(query.id);
+                // Acknowledge the button press
+                await botService.bot.answerCallbackQuery(query.id);
 
-            switch (data) {
-                case 'start_questions':
-                    await questionHandler.handleStartQuestions(chatId);
-                    break;
-                case 'save_results':
-                    await questionHandler.saveResults(chatId, query.from.first_name);
-                    break;
-                case 'restart':
-                    await questionHandler.handleRestart(chatId);
-                    break;
-                case 'upload_txt':
-                    await botService.sendMessage(chatId, '📤 Отправьте мне файл .txt с вашими ответами.\n\nФормат файла:\n```\n【Вопрос 1】\nТекст вопроса...\n\nОтвет:\nВаш ответ здесь\n```');
-                    break;
-            }
-        });
-
-        // Handle document uploads (.txt files) - must be before general message handler
-        botService.bot.on('document', async (msg) => {
-            console.log('📎 Document received:', msg.document.file_name);
-            const chatId = msg.chat.id;
-            const doc = msg.document;
-
-            if (doc.file_name && doc.file_name.endsWith('.txt')) {
-                await questionHandler.handleUploadedFile(chatId, doc.file_id, doc.file_name);
-            } else {
-                await botService.sendMessage(chatId, '📄 Пожалуйста, загрузите файл в формате .txt');
+                switch (data) {
+                    case 'start_questions':
+                        await questionHandler.handleStartQuestions(chatId);
+                        break;
+                    case 'save_results':
+                        await questionHandler.saveResults(chatId, query.from.first_name);
+                        break;
+                    case 'restart':
+                        await questionHandler.handleRestart(chatId);
+                        break;
+                }
+            } catch (error) {
+                console.error('❌ Callback query error:', error.message);
             }
         });
 
         // Handle text messages (answers)
         botService.onMessage((msg) => {
-            // Skip if it's a document message
-            if (msg.document) return;
-
             if (msg.text && !msg.text.startsWith('/')) {
                 const session = questionHandler.getSession(msg.chat.id);
                 if (session && session.currentIndex < questions.length) { // Only if in questioning phase

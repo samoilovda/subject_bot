@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import axios from 'axios';
 import botService from './bot/service.js';
 import summaryService from './ai/summary.js';
 import { questions, introMessage, congratsMessage } from './config/questions.js';
@@ -63,8 +62,6 @@ class QuestionHandler {
             reply_markup: {
                 inline_keyboard: [[
                     { text: '✅ Начать опрос', callback_data: 'start_questions' }
-                ], [
-                    { text: '📄 Загрузить .txt', callback_data: 'upload_txt' }
                 ]]
             }
         });
@@ -207,96 +204,6 @@ class QuestionHandler {
     async handleRestart(chatId) {
         this.clearSession(chatId);
         await this.handleStart({ chat: { id: chatId } });
-    }
-
-    /**
-     * Handle uploaded .txt file with pre-answered questions
-     */
-    async handleUploadedFile(chatId, fileId, fileName) {
-        try {
-            // Download file from Telegram
-            const fileLink = await botService.bot.getFileLink(fileId);
-            const response = await axios.get(fileLink, { responseType: 'text' });
-            const content = response.data;
-
-            // Parse Q&A pairs from content
-            const qaPairs = this.parseQAFromText(content);
-
-            if (qaPairs.length === 0) {
-                await botService.sendMessage(chatId, '❌ Не удалось найти ответы в файле. Убедитесь, что файл содержит вопросы и ответы.');
-                return;
-            }
-
-            // Create session with parsed answers
-            this.sessions.set(chatId, {
-                currentIndex: qaPairs.length,
-                answers: qaPairs,
-                summary: null,
-                lastActivity: Date.now()
-            });
-
-            await botService.sendMessage(chatId, `📄 Файл получен: *${fileName}*\n\n✅ Найдено ${qaPairs.length} ответов.\n\n⏳ Генерирую анализ...`);
-            await botService.sendTyping(chatId);
-
-            // Generate summary directly
-            await this.generateAndSendSummary(chatId);
-
-        } catch (error) {
-            console.error('File upload error:', error.message);
-            await botService.sendMessage(chatId, '❌ Ошибка при обработке файла. Попробуйте снова.');
-        }
-    }
-
-    /**
-     * Parse Q&A pairs from text content
-     */
-    parseQAFromText(content) {
-        const qaPairs = [];
-        const lines = content.split('\n');
-
-        let currentQuestion = null;
-        let currentAnswer = [];
-        let inAnswer = false;
-
-        for (const line of lines) {
-            const trimmed = line.trim();
-
-            // Check for question markers
-            if (trimmed.match(/^【?Вопрос\s*\d+】?[:.]?/i) || trimmed.match(/^\d+[\.\)]/)) {
-                // Save previous Q&A if exists
-                if (currentQuestion && currentAnswer.length > 0) {
-                    qaPairs.push({
-                        question: currentQuestion,
-                        answer: currentAnswer.join('\n').trim()
-                    });
-                }
-                currentQuestion = trimmed.replace(/^【?Вопрос\s*\d+】?[:.]?\s*/i, '').replace(/^\d+[\.\)]\s*/, '');
-                currentAnswer = [];
-                inAnswer = false;
-            }
-            // Check for answer marker
-            else if (trimmed.match(/^Ответ[:.]?/i)) {
-                inAnswer = true;
-            }
-            // Collect answer lines
-            else if (inAnswer && trimmed) {
-                currentAnswer.push(trimmed);
-            }
-            // If no markers, treat non-empty lines after question as answer
-            else if (currentQuestion && trimmed && !trimmed.match(/^[─═]+$/)) {
-                currentAnswer.push(trimmed);
-            }
-        }
-
-        // Don't forget the last Q&A
-        if (currentQuestion && currentAnswer.length > 0) {
-            qaPairs.push({
-                question: currentQuestion,
-                answer: currentAnswer.join('\n').trim()
-            });
-        }
-
-        return qaPairs;
     }
 }
 
