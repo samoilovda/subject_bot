@@ -1,7 +1,7 @@
 {
     "name": "subject-bot",
     "version": "1.0.0",
-    "description": "Structured questionnaire bot with AI summary - Russian only",
+    "description": "Structured questionnaire bot with AI summary - Russian and Ukrainian",
     "type": "module",
     "main": "src/index.js",
     "scripts": {

@@ -3,7 +3,6 @@ dotenv.config();
 
 import botService from './bot/service.js';
 import questionHandler from './handler.js';
-import { getQuestions } from './config/translations.js';
 
 async function start() {
     try {
@@ -76,14 +75,20 @@ async function start() {
 }
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+async function shutdown() {
     console.log('\n👋 Shutting down...');
+    try {
+        if (botService.bot) {
+            await botService.bot.stopPolling();
+        }
+        questionHandler.cleanup();
+    } catch (error) {
+        console.error('Error during shutdown:', error.message);
+    }
     process.exit(0);
-});
+}
 
-process.on('SIGTERM', () => {
-    console.log('\n👋 Shutting down...');
-    process.exit(0);
-});
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 start();

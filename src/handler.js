@@ -22,7 +22,26 @@ class QuestionHandler {
         this.sessions = new Map();
 
         // Cleanup stale sessions every 10 minutes
-        setInterval(() => this.cleanupStaleSessions(), 10 * 60 * 1000);
+        this.cleanupInterval = setInterval(() => this.cleanupStaleSessions(), 10 * 60 * 1000);
+    }
+
+    /**
+     * Cleanup resources (call on shutdown)
+     */
+    cleanup() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
+        this.sessions.clear();
+    }
+
+    /**
+     * Escape markdown special characters
+     */
+    escapeMarkdown(text) {
+        if (!text) return '';
+        return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
     }
 
     getSession(chatId) {
@@ -164,8 +183,9 @@ class QuestionHandler {
         const summary = await summaryService.generateSummary(session.answers, session.lang);
         session.summary = summary;
 
-        // Send summary
-        await botService.sendMessage(chatId, t.ui.deepAnalysis(summary));
+        // Send summary (escape markdown in AI response to avoid formatting errors)
+        const safeSummary = this.escapeMarkdown(summary);
+        await botService.sendMessage(chatId, t.ui.deepAnalysis(safeSummary));
 
         // Send congratulations
         await botService.sendMessage(chatId, t.congratsMessage);
@@ -234,6 +254,13 @@ class QuestionHandler {
 
         // Send document
         await botService.sendDocument(chatId, filePath, t.ui.resultsCaption);
+
+        // Delete file after sending to avoid disk bloat
+        try {
+            fs.unlinkSync(filePath);
+        } catch (err) {
+            console.error('Failed to delete export file:', err.message);
+        }
         await botService.sendMessage(chatId, t.ui.resultsSaved);
     }
 
