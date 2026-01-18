@@ -1,8 +1,10 @@
 import axios from 'axios';
+import { getTranslations } from '../config/translations.js';
 
 /**
  * AI Summary Service
  * Generates deep analysis of user's answers.
+ * Supports Russian and Ukrainian languages.
  */
 class SummaryService {
     constructor() {
@@ -16,20 +18,25 @@ class SummaryService {
 
     /**
      * Generates a deep summary based on all user answers.
+     * @param {Array} questionsAndAnswers - Array of {question, answer} objects
+     * @param {string} lang - Language code ('ru' or 'uk')
      */
-    async generateSummary(questionsAndAnswers) {
+    async generateSummary(questionsAndAnswers, lang = 'ru') {
         console.log('🔍 AI: Starting summary generation...');
         console.log('🔍 AI: API Key present:', !!this.apiKey);
         console.log('🔍 AI: Number of Q&A pairs:', questionsAndAnswers.length);
+        console.log('🔍 AI: Language:', lang);
+
+        const t = getTranslations(lang);
 
         if (!this.apiKey) {
             console.log('❌ AI: No API key - returning fallback');
-            return this.getFallbackSummary();
+            return t.ai.fallback;
         }
 
         try {
             const qaText = questionsAndAnswers
-                .map((qa, i) => `Вопрос ${i + 1}: ${qa.question}\nОтвет: ${qa.answer}`)
+                .map((qa, i) => `${t.ai.questionLabel(i + 1)} ${qa.question}\n${t.ai.answerLabel} ${qa.answer}`)
                 .join('\n\n');
 
             console.log('🔍 AI: Making API request to:', this.baseURL);
@@ -41,21 +48,11 @@ class SummaryService {
                     messages: [
                         {
                             role: 'system',
-                            content: `Ты — глубокий психологический аналитик. Твоя задача — создать глубокий, развёрнутый анализ ответов человека.
-
-ФОРМАТ ОТВЕТА:
-1. **Общий портрет** — кто этот человек на основе его ответов (2-3 предложения)
-2. **Ключевые паттерны** — какие повторяющиеся темы, убеждения или тенденции заметны
-3. **Сильные стороны** — что проявляется как ресурс
-4. **Зоны роста** — над чем стоит поработать
-5. **Главный вопрос избегания** — сформулируй ОДИН главный вопрос, который человек избегает задать себе. Это должен быть глубокий вопрос, ответ на который он не хочет знать или боится узнать.
-6. **Ключевой вопрос** — одно ключевое наблюдение. Сформулируй на его основании ОДИН глубокий вопрос о том, что человек выбирает сейчас, исходя из психологического стиля его ответов
-
-Пиши на русском языке. Будь глубоким, но конкретным. Избегай общих фраз. Пиши человеку лично во втором лице (а не в третьем)`
+                            content: t.ai.systemPrompt
                         },
                         {
                             role: 'user',
-                            content: `Вот ответы человека на вопросы:\n\n${qaText}\n\nСоздай глубокий анализ.`
+                            content: t.ai.userPrompt(qaText)
                         }
                     ],
                     temperature: 0.7,
@@ -82,16 +79,8 @@ class SummaryService {
             if (error.code) {
                 console.error('❌ AI Error Code:', error.code);
             }
-            return this.getFallbackSummary();
+            return t.ai.fallback;
         }
-    }
-
-    getFallbackSummary() {
-        return `📊 *Ваш анализ*
-
-К сожалению, AI-анализ временно недоступен. Ваши ответы сохранены и будут проанализированы позже.
-
-Пожалуйста, попробуйте снова через некоторое время.`;
     }
 }
 

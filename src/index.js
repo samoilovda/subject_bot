@@ -3,7 +3,7 @@ dotenv.config();
 
 import botService from './bot/service.js';
 import questionHandler from './handler.js';
-import { questions } from './config/questions.js';
+import { getQuestions } from './config/translations.js';
 
 async function start() {
     try {
@@ -32,6 +32,12 @@ async function start() {
                 await botService.bot.answerCallbackQuery(query.id);
 
                 switch (data) {
+                    case 'lang_ru':
+                        await questionHandler.handleLanguageSelect(chatId, 'ru');
+                        break;
+                    case 'lang_uk':
+                        await questionHandler.handleLanguageSelect(chatId, 'uk');
+                        break;
                     case 'start_questions':
                         await questionHandler.handleStartQuestions(chatId);
                         break;
@@ -51,6 +57,7 @@ async function start() {
         botService.onMessage((msg) => {
             if (msg.text && !msg.text.startsWith('/')) {
                 const session = questionHandler.getSession(msg.chat.id);
+                const questions = questionHandler.getSessionQuestions(msg.chat.id);
                 if (session && session.currentIndex < questions.length) { // Only if in questioning phase
                     questionHandler.handleAnswer(msg.chat.id, msg.text);
                 }

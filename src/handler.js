@@ -3,13 +3,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import botService from './bot/service.js';
 import summaryService from './ai/summary.js';
-import { questions, introMessage, congratsMessage } from './config/questions.js';
+import { getTranslations, getQuestions } from './config/translations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Question Flow Handler
  * Manages sequential questioning and summary generation.
+ * Supports Russian and Ukrainian languages.
  */
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -17,7 +18,7 @@ const MAX_ANSWER_LENGTH = 4000;
 
 class QuestionHandler {
     constructor() {
-        // chatId -> { currentIndex, answers: [{question, answer}], lastActivity }
+        // chatId -> { lang, currentIndex, answers: [{question, answer}], lastActivity }
         this.sessions = new Map();
 
         // Cleanup stale sessions every 10 minutes
@@ -28,8 +29,9 @@ class QuestionHandler {
         return this.sessions.get(chatId);
     }
 
-    startSession(chatId) {
+    startSession(chatId, lang = 'ru') {
         this.sessions.set(chatId, {
+            lang,
             currentIndex: 0,
             answers: [],
             summary: null,
@@ -51,17 +53,37 @@ class QuestionHandler {
         this.sessions.delete(chatId);
     }
 
+    /**
+     * Handle /start command - show language selection
+     */
     async handleStart(msg) {
         const chatId = msg.chat.id;
-        this.startSession(chatId);
 
-        await botService.sendMessage(chatId, introMessage);
-
-        // Send menu with options
-        await botService.bot.sendMessage(chatId, 'Выберите действие:', {
+        // Show language selection first
+        await botService.bot.sendMessage(chatId, '🌐 Виберіть мову / Выберите язык:', {
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '✅ Начать опрос', callback_data: 'start_questions' }
+                    { text: '🇷🇺 Русский', callback_data: 'lang_ru' },
+                    { text: '🇺🇦 Українська', callback_data: 'lang_uk' }
+                ]]
+            }
+        });
+    }
+
+    /**
+     * Handle language selection
+     */
+    async handleLanguageSelect(chatId, lang) {
+        this.startSession(chatId, lang);
+        const t = getTranslations(lang);
+
+        await botService.sendMessage(chatId, t.introMessage);
+
+        // Send menu with options
+        await botService.bot.sendMessage(chatId, t.ui.chooseAction, {
+            reply_markup: {
+                inline_keyboard: [[
+                    { text: t.ui.startQuestions, callback_data: 'start_questions' }
                 ]]
             }
         });
@@ -70,7 +92,8 @@ class QuestionHandler {
     async handleStartQuestions(chatId) {
         const session = this.getSession(chatId);
         if (!session) {
-            this.startSession(chatId);
+            // Fallback: start with Russian if no session
+            this.startSession(chatId, 'ru');
         }
         await this.sendNextQuestion(chatId);
     }
@@ -79,6 +102,8 @@ class QuestionHandler {
         const session = this.getSession(chatId);
         if (!session) return;
 
+        const t = getTranslations(session.lang);
+        const questions = getQuestions(session.lang);
         const index = session.currentIndex;
 
         if (index >= questions.length) {
@@ -89,7 +114,7 @@ class QuestionHandler {
 
         const questionNumber = index + 1;
         const totalQuestions = questions.length;
-        const progressText = `📝 *Вопрос ${questionNumber} из ${totalQuestions}*\n\n`;
+        const progressText = t.ui.questionProgress(questionNumber, totalQuestions);
 
         await botService.sendMessage(chatId, progressText + questions[index]);
     }
@@ -98,12 +123,15 @@ class QuestionHandler {
         const session = this.getSession(chatId);
         if (!session) return;
 
+        const t = getTranslations(session.lang);
+        const questions = getQuestions(session.lang);
+
         // Update last activity
         session.lastActivity = Date.now();
 
         // Validate input length
         if (text.length > MAX_ANSWER_LENGTH) {
-            await botService.sendMessage(chatId, `⚠️ Ответ слишком длинный (максимум ${MAX_ANSWER_LENGTH} символов). Пожалуйста, сократите ответ.`);
+            await botService.sendMessage(chatId, t.ui.answerTooLong(MAX_ANSWER_LENGTH));
             return;
         }
 
@@ -127,26 +155,28 @@ class QuestionHandler {
         const session = this.getSession(chatId);
         if (!session) return;
 
-        await botService.sendMessage(chatId, '⏳ *Анализирую ваши ответы...*\n\nЭто может занять минуту.');
+        const t = getTranslations(session.lang);
+
+        await botService.sendMessage(chatId, t.ui.analyzing);
         await botService.sendTyping(chatId);
 
-        // Generate AI summary
-        const summary = await summaryService.generateSummary(session.answers);
+        // Generate AI summary with language
+        const summary = await summaryService.generateSummary(session.answers, session.lang);
         session.summary = summary;
 
         // Send summary
-        await botService.sendMessage(chatId, `📊 *Глубокий анализ*\n\n${summary}`);
+        await botService.sendMessage(chatId, t.ui.deepAnalysis(summary));
 
         // Send congratulations
-        await botService.sendMessage(chatId, congratsMessage);
+        await botService.sendMessage(chatId, t.congratsMessage);
 
         // Save button
-        await botService.bot.sendMessage(chatId, 'Хотите сохранить результаты?', {
+        await botService.bot.sendMessage(chatId, t.ui.savePrompt, {
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '💾 Сохранить в .txt', callback_data: 'save_results' }
+                    { text: t.ui.saveButton, callback_data: 'save_results' }
                 ], [
-                    { text: '🔄 Начать заново', callback_data: 'restart' }
+                    { text: t.ui.restartButton, callback_data: 'restart' }
                 ]]
             }
         });
@@ -155,9 +185,13 @@ class QuestionHandler {
     async saveResults(chatId, userName = 'user') {
         const session = this.getSession(chatId);
         if (!session) {
-            await botService.sendMessage(chatId, '❌ Нет данных для сохранения. Начните заново с /start');
+            const t = getTranslations('ru');
+            await botService.sendMessage(chatId, t.ui.noDataToSave);
             return;
         }
+
+        const t = getTranslations(session.lang);
+        const exp = t.export;
 
         // Create exports directory
         const exportsDir = path.join(__dirname, '..', 'exports');
@@ -170,40 +204,50 @@ class QuestionHandler {
         const fileName = `results_${chatId}_${timestamp}.txt`;
         const filePath = path.join(exportsDir, fileName);
 
+        const locale = session.lang === 'uk' ? 'uk-UA' : 'ru-RU';
+
         let content = `═══════════════════════════════════════════\n`;
-        content += `          РЕЗУЛЬТАТЫ ПЕРВОГО ЭТАПА\n`;
+        content += `          ${exp.header}\n`;
         content += `═══════════════════════════════════════════\n\n`;
-        content += `Дата: ${new Date().toLocaleDateString('ru-RU')}\n`;
-        content += `Время: ${new Date().toLocaleTimeString('ru-RU')}\n\n`;
+        content += `${exp.date} ${new Date().toLocaleDateString(locale)}\n`;
+        content += `${exp.time} ${new Date().toLocaleTimeString(locale)}\n\n`;
         content += `───────────────────────────────────────────\n`;
-        content += `                 ОТВЕТЫ\n`;
+        content += `                 ${exp.answers}\n`;
         content += `───────────────────────────────────────────\n\n`;
 
         session.answers.forEach((qa, i) => {
-            content += `【Вопрос ${i + 1}】\n${qa.question}\n\n`;
-            content += `Ответ:\n${qa.answer}\n\n`;
+            content += `${exp.questionLabel(i + 1)}\n${qa.question}\n\n`;
+            content += `${exp.answerLabel}\n${qa.answer}\n\n`;
             content += `───────────────────────────────────────────\n\n`;
         });
 
         content += `\n═══════════════════════════════════════════\n`;
-        content += `              ГЛУБОКИЙ АНАЛИЗ\n`;
+        content += `              ${exp.analysisHeader}\n`;
         content += `═══════════════════════════════════════════\n\n`;
-        content += session.summary || 'Анализ недоступен';
+        content += session.summary || exp.analysisUnavailable;
         content += `\n\n═══════════════════════════════════════════\n`;
-        content += `    Поздравляем с завершением первого этапа!\n`;
+        content += `    ${exp.congratsFooter}\n`;
         content += `═══════════════════════════════════════════\n`;
 
         // Write file
         fs.writeFileSync(filePath, content, 'utf8');
 
         // Send document
-        await botService.sendDocument(chatId, filePath, '📄 Ваши результаты');
-        await botService.sendMessage(chatId, '✅ Результаты сохранены и отправлены вам файлом.');
+        await botService.sendDocument(chatId, filePath, t.ui.resultsCaption);
+        await botService.sendMessage(chatId, t.ui.resultsSaved);
     }
 
     async handleRestart(chatId) {
         this.clearSession(chatId);
         await this.handleStart({ chat: { id: chatId } });
+    }
+
+    /**
+     * Get questions for current session language
+     */
+    getSessionQuestions(chatId) {
+        const session = this.getSession(chatId);
+        return getQuestions(session?.lang || 'ru');
     }
 }
 
