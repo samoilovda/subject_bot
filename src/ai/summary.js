@@ -68,7 +68,12 @@ class SummaryService {
             );
 
             console.log('✅ AI: Response received successfully');
-            return response.data.choices[0].message.content.trim();
+            let content = response.data.choices[0].message.content.trim();
+
+            // Clean output: remove #, *, / characters
+            content = content.replace(/[#*\/]/g, '');
+
+            return content;
 
         } catch (error) {
             console.error('❌ AI Error:', error.message);
