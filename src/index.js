@@ -37,6 +37,9 @@ async function start() {
                     case 'lang_uk':
                         await questionHandler.handleLanguageSelect(chatId, 'uk');
                         break;
+                    case 'lang_en':
+                        await questionHandler.handleLanguageSelect(chatId, 'en');
+                        break;
                     case 'start_questions':
                         await questionHandler.handleStartQuestions(chatId);
                         break;
