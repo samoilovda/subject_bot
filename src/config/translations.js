@@ -54,7 +54,10 @@ export const translations = {
         // Intro message
         introMessage: `🎓 *Добро пожаловать!*
 
+
 Вы начинаете первое домашнее предложение.
+
+Перед началом подумайте и сформулируйте для себя проблему, которая сейчас беспокоит вас больше всего. Её не нужно записывать, достаточно просто иметь в виду при ответе на дальнейшие вопросы.
 
 Сейчас вам будет задано 35 вопросов. Отвечайте на каждый из них развёрнуто и честно.
 
@@ -177,7 +180,10 @@ export const translations = {
         // Intro message
         introMessage: `🎓 *Ласкаво просимо!*
 
+
 Ви розпочинаєте перше домашнє речення.
+
+Перед початком подумайте і сформулюйте для себе проблему, яка зараз турбує вас найбільше. Її не потрібно записувати, достатньо просто мати на увазі, відповідаючи на подальші питання.
 
 Зараз вам буде поставлено 35 питань. Відповідайте на кожне з них розгорнуто і чесно.
 
@@ -247,6 +253,131 @@ export const translations = {
 На жаль, AI-аналіз тимчасово недоступний. Ваші відповіді збережені та будуть проаналізовані пізніше.
 
 Будь ласка, спробуйте знову через деякий час.`
+        }
+    },
+
+    en: {
+        // Language selection
+        selectLanguage: '🌐 Select Language:',
+
+        // Questions - Step 1: Searching for source (internal/external)
+        questions: [
+            "This happened to me because...",
+            "It turned out this way because...",
+            "I ended up in this situation due to...",
+            "I wouldn't be here if not for...",
+            // Step 2: Symbolic figure/person
+            "If not for ..., everything would be different for me",
+            "If this hadn't happened, I would be a different person, and I wouldn't have to...",
+            "If I close my eyes and look at who is the external master of my attachment, the figure (face) of ... appears",
+            // Step 3: Renunciation of will
+            "I have to agree to all this because...",
+            "I have to remain silent because...",
+            "I have to do all this because...",
+            "I have no choice (or I have a choice, but I choose this) because...",
+            "I handed over my will to ...",
+            // Step 4: Renunciation of authorship
+            "I would never act this way if (not) ...",
+            "Under normal conditions I would...",
+            "It turns out that I am controlled by ...",
+            // Step 5: Vicious circle (20 times)
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that...",
+            "It just happened that..."
+        ],
+
+        // Intro message
+        introMessage: `🎓 *Welcome!*
+
+You are starting your first homework sentence.
+
+Before beginning, think and formulate for yourself a problem that worries you the most right now. You don't need to write it down, just keep it in mind when answering the following questions.
+
+You will now be asked 35 questions. Answer each of them in detail and honestly.
+
+After completion, you will receive a deep analysis of your answers.
+
+Ready to start?`,
+
+        // Congratulations message
+        congratsMessage: `🎉 *Congratulations!*
+
+You have successfully completed the *first homework sentence* on the path to becoming a subject.
+
+Your answers have been processed and analyzed. You can see the analysis of your answers above.
+
+You can save the results by clicking the button below.
+
+See you at the next seminars! 🚀`,
+
+        // UI strings
+        ui: {
+            chooseAction: 'Choose action:',
+            startQuestions: '✅ Start survey',
+            questionProgress: (current, total) => `📝 *Question ${current} of ${total}*\n\n`,
+            answerTooLong: (max) => `⚠️ Answer is too long (max ${max} chars). Please shorten your answer.`,
+            analyzing: '⏳ *Analyzing your answers...*\n\nThis may take a minute.',
+            deepAnalysis: (summary) => `📊 *Deep Analysis*\n\n${summary}`,
+            savePrompt: 'Do you want to save the results?',
+            saveButton: '💾 Save to .txt',
+            restartButton: '🔄 Start over',
+            noDataToSave: '❌ No data to save. Start over with /start',
+            resultsSaved: '✅ Results saved and sent to you as a file.',
+            resultsCaption: '📄 Your results'
+        },
+
+        // File export strings
+        export: {
+            header: 'FIRST STAGE RESULTS',
+            answers: 'ANSWERS',
+            questionLabel: (i) => `【Question ${i}】`,
+            answerLabel: 'Answer:',
+            analysisHeader: 'DEEP ANALYSIS',
+            analysisUnavailable: 'Analysis unavailable',
+            congratsFooter: 'Congratulations on completing the first stage!',
+            date: 'Date:',
+            time: 'Time:'
+        },
+
+        // AI prompts
+        ai: {
+            systemPrompt: `You are a deep psychological analyst. Your task is to create a deep, detailed analysis of a person's answers.
+
+RESPONSE FORMAT:
+1. **General Portrait** — who is this person based on their answers (2-3 sentences)
+2. **Key Patterns** — what recurring themes, beliefs, or tendencies are noticeable
+3. **Strengths** — what manifests as a resource
+4. **Growth Areas** — what is worth working on
+5. **Vicious Circle** — analyze the answers to the repeating question "It just happened that..." (questions 16-35). Determine at which answer the person started to repeat themselves, to "loop" — this indicates a deep belief or a short circuit in thinking. Describe what this belief is and why thinking loops here.
+6. **Main Avoidance Question** — formulate ONE main question that the person avoids asking themselves. It should be a deep question, the answer to which they do not want to know or are afraid to find out.
+7. **Key Question** — one key observation. Formulate based on it ONE deep question about what the person is choosing right now, based on the psychological style of their answers
+
+Write in English. Be deep, but specific. Avoid general phrases. Write to the person personally in the second person (not in the third).`,
+            userPrompt: (qaText) => `Here are the person's answers to the questions:\n\n${qaText}\n\nCreate a deep analysis.`,
+            questionLabel: (i) => `Question ${i}:`,
+            answerLabel: 'Answer:',
+            fallback: `📊 *Your Analysis*
+
+Unfortunately, AI analysis is temporarily unavailable. Your answers have been saved and will be analyzed later.
+
+Please try again in a while.`
         }
     }
 };

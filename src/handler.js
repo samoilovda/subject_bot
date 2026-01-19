@@ -83,7 +83,8 @@ class QuestionHandler {
             reply_markup: {
                 inline_keyboard: [[
                     { text: '🇷🇺 Русский', callback_data: 'lang_ru' },
-                    { text: '🇺🇦 Українська', callback_data: 'lang_uk' }
+                    { text: '🇺🇦 Українська', callback_data: 'lang_uk' },
+                    { text: '🇬🇧 English', callback_data: 'lang_en' }
                 ]]
             }
         });
@@ -224,7 +225,7 @@ class QuestionHandler {
         const fileName = `results_${chatId}_${timestamp}.txt`;
         const filePath = path.join(exportsDir, fileName);
 
-        const locale = session.lang === 'uk' ? 'uk-UA' : 'ru-RU';
+        const locale = session.lang === 'uk' ? 'uk-UA' : (session.lang === 'en' ? 'en-US' : 'ru-RU');
 
         let content = `═══════════════════════════════════════════\n`;
         content += `          ${exp.header}\n`;
