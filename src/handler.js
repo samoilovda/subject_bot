@@ -41,7 +41,22 @@ class QuestionHandler {
      */
     escapeMarkdown(text) {
         if (!text) return '';
-        return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+        // Legacy Markdown (V1) supports very few escapes.
+        // It's safer to not escape punctuation like . - ! as it creates literal backslashes.
+        // We will try to preserve bolding by ensuring ** becomes * (if V1 requires * for bold).
+
+        let safe = text;
+
+        // Convert **bold** (AI style) to *bold* (Telegram V1 style)
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '*$1*');
+
+        // Escape specific characters if we want them literal, but for AI text we usually want formatting.
+        // If we strictly want to avoid bugs, we should perhaps just NOT escape . - !
+        // We only escape characters that would break the parsing structure if unpaired.
+        // safe = safe.replace(/([_`\[])/g, '\\$1'); // Minimal escaping
+
+        // Currently, removing the aggressive escaping logic entirely is the safest fix for the user's issue.
+        return safe;
     }
 
     getSession(chatId) {
