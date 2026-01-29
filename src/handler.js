@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import botService from './bot/service.js';
 import summaryService from './ai/summary.js';
-import { getTranslations, getQuestions } from './config/translations.js';
+import { getTranslations, getQuestions, getChainConfig } from './config/translations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -48,9 +48,10 @@ class QuestionHandler {
         return this.sessions.get(chatId);
     }
 
-    startSession(chatId, lang = 'ru') {
+    startSession(chatId, lang = 'ru', chain = 1) {
         this.sessions.set(chatId, {
             lang,
+            chain,
             currentIndex: 0,
             answers: [],
             summary: null,
@@ -97,9 +98,39 @@ class QuestionHandler {
         this.startSession(chatId, lang);
         const t = getTranslations(lang);
 
-        await botService.sendMessage(chatId, t.introMessage);
+        // Show lesson selection
+        await botService.bot.sendMessage(chatId, t.ui.chooseAction, {
+            reply_markup: {
+                inline_keyboard: [[
+                    { text: t.ui.lesson1, callback_data: 'start_chain_1' },
+                    { text: t.ui.lesson2, callback_data: 'start_chain_2' }
+                ]]
+            }
+        });
+    }
 
-        // Send menu with options
+    /**
+     * Handle chain (lesson) selection
+     */
+    async handleChainSelect(chatId, chainId) {
+        let session = this.getSession(chatId);
+        if (!session) {
+            this.startSession(chatId, 'ru', chainId);
+            session = this.getSession(chatId);
+        } else {
+            // Update chain and reset keys
+            session.chain = chainId;
+            session.currentIndex = 0;
+            session.answers = [];
+            session.summary = null;
+        }
+
+        const config = getChainConfig(session.lang, chainId);
+        const t = getTranslations(session.lang);
+
+        await botService.sendMessage(chatId, config.introMessage);
+
+        // Send menu with options to start
         await botService.bot.sendMessage(chatId, t.ui.chooseAction, {
             reply_markup: {
                 inline_keyboard: [[
@@ -123,7 +154,8 @@ class QuestionHandler {
         if (!session) return;
 
         const t = getTranslations(session.lang);
-        const questions = getQuestions(session.lang);
+        const config = getChainConfig(session.lang, session.chain);
+        const questions = config.questions;
         const index = session.currentIndex;
 
         if (index >= questions.length) {
@@ -141,10 +173,17 @@ class QuestionHandler {
 
     async handleAnswer(chatId, text) {
         const session = this.getSession(chatId);
-        if (!session) return;
+        if (!session) {
+            // Inform user if session is expired/missing (unless it's a command)
+            if (!text.startsWith('/')) {
+                await botService.sendMessage(chatId, '⌛ Сессия истекла. Пожалуйста, введите /start, чтобы начать заново.');
+            }
+            return;
+        }
 
         const t = getTranslations(session.lang);
-        const questions = getQuestions(session.lang);
+        const config = getChainConfig(session.lang, session.chain);
+        const questions = config.questions;
 
         // Update last activity
         session.lastActivity = Date.now();
@@ -181,15 +220,17 @@ class QuestionHandler {
         await botService.sendTyping(chatId);
 
         // Generate AI summary with language
-        const summary = await summaryService.generateSummary(session.answers, session.lang);
+        const summary = await summaryService.generateSummary(session.answers, session.lang, session.chain);
         session.summary = summary;
 
         // Send summary (escape markdown in AI response to avoid formatting errors)
         const safeSummary = this.escapeMarkdown(summary);
+        const config = getChainConfig(session.lang, session.chain);
+
         await botService.sendMessage(chatId, t.ui.deepAnalysis(safeSummary));
 
         // Send congratulations
-        await botService.sendMessage(chatId, t.congratsMessage);
+        await botService.sendMessage(chatId, config.congratsMessage);
 
         // Save button
         await botService.bot.sendMessage(chatId, t.ui.savePrompt, {
@@ -275,7 +316,8 @@ class QuestionHandler {
      */
     getSessionQuestions(chatId) {
         const session = this.getSession(chatId);
-        return getQuestions(session?.lang || 'ru');
+        const config = getChainConfig(session?.lang || 'ru', session?.chain || 1);
+        return config.questions;
     }
 }
 

@@ -40,6 +40,12 @@ async function start() {
                     case 'lang_en':
                         await questionHandler.handleLanguageSelect(chatId, 'en');
                         break;
+                    case 'start_chain_1':
+                        await questionHandler.handleChainSelect(chatId, 1);
+                        break;
+                    case 'start_chain_2':
+                        await questionHandler.handleChainSelect(chatId, 2);
+                        break;
                     case 'start_questions':
                         await questionHandler.handleStartQuestions(chatId);
                         break;

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getTranslations } from '../config/translations.js';
+import { getTranslations, getChainConfig } from '../config/translations.js';
 
 /**
  * AI Summary Service
@@ -21,22 +21,24 @@ class SummaryService {
      * @param {Array} questionsAndAnswers - Array of {question, answer} objects
      * @param {string} lang - Language code ('ru' or 'uk')
      */
-    async generateSummary(questionsAndAnswers, lang = 'ru') {
+    async generateSummary(questionsAndAnswers, lang = 'ru', chain = 1) {
         console.log('🔍 AI: Starting summary generation...');
         console.log('🔍 AI: API Key present:', !!this.apiKey);
         console.log('🔍 AI: Number of Q&A pairs:', questionsAndAnswers.length);
         console.log('🔍 AI: Language:', lang);
+        console.log('🔍 AI: Chain:', chain);
 
         const t = getTranslations(lang);
+        const config = getChainConfig(lang, chain);
 
         if (!this.apiKey) {
             console.log('❌ AI: No API key - returning fallback');
-            return t.ai.fallback;
+            return config.ai.fallback;
         }
 
         try {
             const qaText = questionsAndAnswers
-                .map((qa, i) => `${t.ai.questionLabel(i + 1)} ${qa.question}\n${t.ai.answerLabel} ${qa.answer}`)
+                .map((qa, i) => `${config.ai.questionLabel(i + 1)} ${qa.question}\n${config.ai.answerLabel} ${qa.answer}`)
                 .join('\n\n');
 
             console.log('🔍 AI: Making API request to:', this.baseURL);
@@ -48,11 +50,11 @@ class SummaryService {
                     messages: [
                         {
                             role: 'system',
-                            content: t.ai.systemPrompt
+                            content: config.ai.systemPrompt
                         },
                         {
                             role: 'user',
-                            content: t.ai.userPrompt(qaText)
+                            content: config.ai.userPrompt(qaText)
                         }
                     ],
                     temperature: 0.7,
@@ -84,7 +86,7 @@ class SummaryService {
             if (error.code) {
                 console.error('❌ AI Error Code:', error.code);
             }
-            return t.ai.fallback;
+            return config.ai.fallback;
         }
     }
 }
