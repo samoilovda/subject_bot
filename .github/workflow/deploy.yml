@@ -1,0 +1,21 @@
+name: Deploy Subject Bot
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/my-bots/subject_bot
+            git pull origin main
+            cd /opt/my-bots/orchestrator
+            # Внимание: имя сервиса subject_bot
+            docker compose up -d --build --no-deps subject_bot
+            docker image prune -f
