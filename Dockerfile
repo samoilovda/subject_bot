@@ -13,4 +13,4 @@ RUN npm ci --only=production && npm cache clean --force
 COPY . .
 
 # Команда запуска (убедитесь, что ваш главный файл называется index.js или поправьте тут)
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]
