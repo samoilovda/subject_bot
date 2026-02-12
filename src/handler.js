@@ -118,7 +118,8 @@ class QuestionHandler {
             reply_markup: {
                 inline_keyboard: [[
                     { text: t.ui.lesson1, callback_data: 'start_chain_1' },
-                    { text: t.ui.lesson2, callback_data: 'start_chain_2' }
+                    { text: t.ui.lesson2, callback_data: 'start_chain_2' },
+                    { text: t.ui.lesson3, callback_data: 'start_chain_3' }
                 ]]
             }
         });

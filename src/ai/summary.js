@@ -58,7 +58,7 @@ class SummaryService {
                         }
                     ],
                     temperature: 0.7,
-                    max_tokens: 1500
+                    max_tokens: 1000
                 },
                 {
                     headers: {
@@ -73,7 +73,8 @@ class SummaryService {
             let content = response.data.choices[0].message.content.trim();
 
             // Clean output: remove #, *, / characters
-            content = content.replace(/[#*\/]/g, '');
+            // Clean output: remove # (headers not supported in V1)
+            content = content.replace(/[#]/g, '');
 
             return content;
 

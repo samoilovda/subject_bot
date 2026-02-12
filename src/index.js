@@ -46,6 +46,9 @@ async function start() {
                     case 'start_chain_2':
                         await questionHandler.handleChainSelect(chatId, 2);
                         break;
+                    case 'start_chain_3':
+                        await questionHandler.handleChainSelect(chatId, 3);
+                        break;
                     case 'start_questions':
                         await questionHandler.handleStartQuestions(chatId);
                         break;
